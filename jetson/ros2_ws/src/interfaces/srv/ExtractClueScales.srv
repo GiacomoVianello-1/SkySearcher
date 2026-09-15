@@ -1,0 +1,10 @@
+# Request
+string instruction
+---
+# Response
+string primary_object              # the target to find, e.g. "red rowing boat"
+string[] surroundings              # contextual clues, e.g. ["lake", "shore", "dock"]
+float64[] sigmas                   # spatial co-occurrence scale (m) for each surrounding
+                                   # surroundings[i] has scale sigmas[i]
+bool success
+string message

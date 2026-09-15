@@ -1,0 +1,5 @@
+sensor_msgs/Image image
+string target_query
+---
+SemanticBBox bbox
+bool found

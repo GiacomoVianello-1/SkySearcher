@@ -1,0 +1,9 @@
+# One Sense step: belief update conditioned on the planner's current cumulative ground coverage. 
+# Each polygon is a connected component of the cumulative observed-ground union, in world frame, z ignored.
+float64 roi_x_min
+float64 roi_x_max
+float64 roi_y_min
+float64 roi_y_max
+---
+bool success
+string message

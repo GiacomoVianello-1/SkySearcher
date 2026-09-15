@@ -1,0 +1,35 @@
+FROM robotics_ia:latest
+
+SHELL ["/bin/bash", "-c"]
+WORKDIR /root/
+
+## Turtlebot2
+RUN apt update && apt install ros-humble-kobuki-velocity-smoother ros-humble-sophus -y
+RUN mkdir -p /root/turtlebot2_ws/src
+WORKDIR /root/turtlebot2_ws/src
+# TODO: Fix my forks (dvdmc) when solved!
+RUN git clone https://github.com/kobuki-base/kobuki_ros_interfaces.git && \
+    git clone https://github.com/kobuki-base/kobuki_core.git && \
+    git clone https://github.com/kobuki-base/kobuki_ros.git && \
+    git clone https://github.com/stonier/ecl_core.git && \
+    git clone https://github.com/dvdmc/ecl_lite.git && \
+    git clone https://github.com/kobuki-base/cmd_vel_mux.git
+# COPY rules below
+# Add the user to dialout group
+RUN usermod -a -G dialout root
+
+# URG Node for Hokuyo laser
+RUN git clone --recursive https://github.com/Hokuyo-aut/urg_node2.git
+# By default connected to /dev/ttyACM0. 
+# In case of multiple Hokuyos, udev rules need to be created
+
+WORKDIR /root/turtlebot2_ws
+RUN rosdep update && rosdep install -i --from-path src --rosdistro humble -y
+RUN . /opt/ros/humble/setup.sh && colcon build --symlink-install --executor sequential
+
+RUN echo "source /root/turtlebot2_ws/install/setup.bash" >> /root/.bashrc
+
+# NAV2
+RUN apt update && apt install ros-humble-navigation2 ros-humble-nav2-bringup ros-humble-turtlebot3 -y
+
+WORKDIR /root/

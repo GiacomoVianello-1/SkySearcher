@@ -1,0 +1,11 @@
+build/
+log/
+install/
+__pycache__
+ground_station/visualizer/json_files/
+ground_station/visualizer/ros_bags/
+ground_station/visualizer/plots/
+jetson/ros2_ws/mission_reports/bag_*
+jetson/bags/
+.env
+*.env

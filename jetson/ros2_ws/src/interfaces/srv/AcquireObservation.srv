@@ -1,0 +1,11 @@
+---
+bool success
+string message
+float64 total_area
+uint32 num_polygons
+interfaces/CoveragePolygon[] polygons
+uint32 grid_width
+uint32 grid_height
+float64 grid_origin_x
+float64 grid_origin_y
+float64 grid_resolution

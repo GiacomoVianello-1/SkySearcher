@@ -1,0 +1,17 @@
+# Service to reset the semantic belief field and coverage map for a new dataset episode
+
+string primary_object       # VLM target object name
+string object_description   # Visual/physical description of target object
+string full_instruction     # Full instruction describing target + surroundings context
+string surroundings_json    # JSON array string e.g. '["white sand", "wooden oars"]'
+string sigmas_json          # JSON array string e.g. '[25.0, 3.0]'
+string d_stars_json         # JSON array string e.g. '[0.0, 1.5]'
+string map_name             # e.g., "CabinLake_test" or "CityStreet"
+
+float64 grid_x_min
+float64 grid_x_max
+float64 grid_y_min
+float64 grid_y_max
+---
+bool success
+string message

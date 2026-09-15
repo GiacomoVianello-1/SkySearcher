@@ -1,0 +1,99 @@
+FROM dustynv/l4t-pytorch:r36.4.0
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+# ---- Base tooling --------------------------------------------------------
+RUN apt-get update && apt-get upgrade -y \
+  && apt-get install -y --no-install-recommends \
+    ca-certificates curl git gnupg lsb-release zstd  libssl-dev \
+    tmux tmuxinator vim xterm ssh tree nano htop gdb \
+    net-tools iputils-ping libtool libtool-bin cmake build-essential \
+    python3-tk python3-setuptools python3-pip python3-venv
+
+RUN echo "set -g mouse on" > /root/.tmux.conf
+
+# ---- ROS 2 Humble ---------------------------------------------------------
+RUN apt-get update && apt-get install -y --no-install-recommends locales \
+  && locale-gen en_US en_US.UTF-8 \
+  && update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
+ENV LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      software-properties-common \
+  && add-apt-repository universe \
+  && curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+       -o /usr/share/keyrings/ros-archive-keyring.gpg \
+  && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) main" \
+       > /etc/apt/sources.list.d/ros2.list
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ros-humble-desktop \
+      ros-humble-rmw-cyclonedds-cpp \
+      ros-dev-tools \
+      python3-rosdep \
+      python3-colcon-common-extensions \
+  && rosdep init
+
+# ---- Python deps -----------------------------------------------
+RUN pip3 install --no-cache-dir \
+    --index-url https://pypi.org/simple \
+    "transformers==4.57.0" \
+    "numpy==1.25.1" \
+    "qwen-vl-utils" \
+    "Pillow" \
+    "accelerate" \
+    "shapely"
+
+# PyTorch — pre-installed in dustynv base image.
+# Do NOT use download.pytorch.org/whl/cu128 — those wheels are x86-only.
+
+# ---- Realsense ---------------------------------------------------------
+RUN apt-get update && apt-get install -y \
+    ros-humble-librealsense2* ros-humble-realsense2-* ros-humble-compressed-image-transport
+
+# --- APT packages -------------------------------------------------------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-humble-cv-bridge \
+    ros-humble-vision-opencv \
+    python3-opencv \
+    tmux \
+    tmuxinator \
+    xterm \
+    curl \
+    ssh \
+    tree \
+    python3-tk \
+    nano \
+    libtool \
+    libtool-bin \
+    htop \
+    gdb \
+    net-tools \
+    build-essential \
+    cmake \
+    lsb-release \
+    iputils-ping \
+    iproute2 \
+    && rm -rf /var/lib/apt/lists/*
+
+# ---- MavLink ------------------------------------------------------
+RUN apt-get update && apt-get install -y \
+    ros-humble-mavros \
+    ros-humble-mavros-extras \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN wget https://raw.githubusercontent.com/mavlink/mavros/master/mavros/scripts/install_geographiclib_datasets.sh \
+    && chmod +x install_geographiclib_datasets.sh \
+    && ./install_geographiclib_datasets.sh \
+    && rm install_geographiclib_datasets.sh
+
+# ---- Workspace Setup & AS2 Platform Build --------------------------------
+#RUN apt-get update && apt-get install -y --no-install-recommends \
+#    ros-humble-aerostack2 \
+#    && rm -rf /var/lib/apt/lists/*
+
+# Source ROS + workspaces on every shell.
+RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
+
+WORKDIR /root/

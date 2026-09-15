@@ -1,0 +1,25 @@
+name: oquyla_ground_station
+attach: true
+startup_window: control
+root: /root/ros2_ws
+# REGIME: ground station. RViz on the flight config, plus the two abort calls
+# the operator needs in flight. Both services live on the Jetson and are
+# reachable from here over DDS. use_mocap defaults to false — VRPN is the
+# indoor arena only; outdoors the pose comes from RTK via MAVROS.
+pre_window: source /opt/ros/humble/setup.bash && source install/setup.bash
+
+windows:
+  - rviz:
+      panes:
+        - ros2 launch ground_station_bringup ground_station.launch.py
+
+  # /stop_mission ends the mission but cannot interrupt a servoing hold: the
+  # planner calls verification synchronously and is parked inside it.
+  # /abort_servoing is the only way out of a hold short of killing the node.
+  - control:
+      panes:
+        - |
+          echo "stop  : ros2 service call /stop_mission   std_srvs/srv/Trigger"
+          echo "abort : ros2 service call /abort_servoing std_srvs/srv/Trigger"
+          echo "pose  : ros2 run tf2_ros tf2_echo map base_link"
+          echo "guide : ros2 topic hz /pilot_guidance"

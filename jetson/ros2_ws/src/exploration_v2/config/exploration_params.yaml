@@ -1,0 +1,162 @@
+# exploration_v2 mission parameters.
+# Loaded by launch/exploration_mission.launch.py; overrides the declare_parameter defaults in the nodes.
+# Node keys must match the `name=` given in the launch file, not the name in super().__init__().
+
+/**:
+  ros__parameters:
+
+    # --- Frames & topics -------------------------------------------------
+    # RealSense D4xx, `ros2 launch realsense2_camera rs_launch.py` (see jetson/README.md).
+    camera_frame:      "camera_color_optical_frame"            # colour optical frame
+    camera_info_topic: "/camera/camera/color/camera_info"      # sensor_msgs/CameraInfo
+    rgb_topic:         "/camera/camera/color/image_raw"        # sensor_msgs/Image (belief tracker, servoing)
+    image_topic:       "/camera/camera/color/image_raw"        # same stream, planner's parameter name
+    depth_topic:       "/camera/camera/depth/image_rect_raw"   # sensor_msgs/Image; use /camera/camera/aligned_depth_to_color/image_raw if launched with align_depth.enable:=true
+
+    # Pose: RTK GPS via MAVROS. local_position publishes nav_msgs/Odometry, which is
+    # what the nodes already subscribe to. Requires `tf.send: true` on /mavros/local_position:
+    # the arrival monitor reads TF, not this topic (see jetson/README.md).
+    odom_topic:  "/mavros/local_position/odom"   # nav_msgs/Odometry
+    odom_frame:  "base_link"   # MAVROS local_position tf.child_frame_id
+    world_frame: "map"         # MAVROS local_position tf.frame_id
+
+    # --- Geometry --------------------------------------------------------
+    # 20 x 20 m box, centre 5 m north of the map origin: x -10..10 East,
+    # y -5..15 North. map is ENU (REP-105), so the box is compass-aligned and
+    # does not rotate with the takeoff heading. The drone starts on the southern
+    # edge-ish, 5 m in from the south side. Changing the box means changing, together:
+    #   grid_* here, planner_node bounds_*, mission_manager grid_*,
+    #   max_projection_dist, flight_altitude, frontier_spacing,
+    #   active_domain_radius (shared in /**),
+    #   visual_servoing_node min_altitude / max_altitude / x_dist / standoff_distance.
+    h_ground:            0.0     # m, world z of the ground plane (flat-earth ray-casting)
+    max_projection_dist: 50.0    # m, max ray length when projecting the camera footprint
+    tf_timeout_sec:      0.1     # s the TF buffer may wait for the transform at an image stamp
+    marker_scale:        0.25    # global multiplier on RViz marker sizes. The defaults in
+                                 # the sources were drawn for a 500 m simulation map.
+                                 # Does not touch the pilot guidance volume or the semantic
+                                 # blob ellipses: those are sized by real tolerances and sigmas.
+    active_domain_radius: 6.0    # m, corona ring thickness and bootstrap disc radius.
+                                 # Shared: planner ROI margin, belief-tracker corona kernel,
+                                 # coverage bootstrap disc and the RViz Active Domain marker.
+
+    # --- Grid ------------------------------------------------------------
+    grid_x_min: -10.0    # m, East  (map is ENU per REP-105: x East, y North, z Up)
+    grid_x_max:  10.0    # m, East
+    grid_y_min:  -5.0    # m, North; box centre is 5 m north of the start point
+    grid_y_max:  15.0    # m, North
+    delta_grid:   0.25   # m per cell (80 x 80 cells)
+
+# coverage_map_node: every parameter it declares is shared, see /** above.
+
+# Camera extrinsics, published as a static TF by the launch file. Nothing else joins the
+# MAVROS chain (odom -> base_link) to the RealSense chain (camera_link -> ..._optical_frame),
+# so without this the TF tree is two islands and every world -> camera lookup fails.
+# MEASURE ON SITE after any remount.
+camera_extrinsics_publisher:
+  ros__parameters:
+    parent_frame: "base_link"     # must equal odom_frame above
+    child_frame:  "camera_link"   # RealSense root frame
+    x:      0.095   # m, forward
+    y:      0.0    # m, left
+    z:     -0.085   # m, up (camera below the body)
+    roll:   0.0    # rad
+    pitch:  1.047  # rad, 60 deg down-tilt (confirmed)
+    yaw:    0.0    # rad
+
+vlm_node:
+  ros__parameters:
+    # --- Debug / heuristics ---
+    max_bbox_area_ratio: 0.99   # fraction of image area above which a bbox is rejected
+
+semantic_belief_tracker_node:
+  ros__parameters:
+    instruction: ""              # target object; overwritten by /reset_semantic_belief
+
+    # --- Image/pose sync ---
+    vlm_frame_delay_tolerance: 1.0   # s; older frames are refused before the VLM runs
+
+    # --- Geometry --- (active_domain_radius is shared, see /** above)
+
+    # --- Information gain ---
+    nu:            5.0           # detection sharpness of the semantic likelihood
+    gamma_context: 0.5           # weight of context clues vs the primary object
+    alpha_obs:     0.1           # multiplicative discount for repeated observations
+    beta_absent:   0.1           # non-observation penalty on context footprints (0 disables)
+
+planner_node:
+  ros__parameters:
+    instruction: ""              # target object; overwritten by the /start_mission goal
+
+    # --- Geometry ---
+    flight_altitude:       4.0   # m, ENU (z up)
+    frontier_spacing:      2.5   # m between frontier samples
+
+    # --- Grid (planner copy of the map bounds; keep in sync with grid_* in /**) ---
+    bounds_x_min: -10.0    # m, East
+    bounds_x_max:  10.0    # m, East
+    bounds_y_min:  -5.0    # m, North
+    bounds_y_max:  15.0    # m, North
+
+    # --- Information gain ---
+    # w_semantic / w_reobs are always overridden by the launch arguments of the same name.
+    w_semantic: 15.0       # weight of semantic IG vs geometric IG
+    w_reobs:     0.001     # weight of yaw-diversity re-observation IG
+    gamma:       0.00006   # 1/m, traversal penalty in J(w) = IG(w) - gamma * dist
+
+    # --- Movement & arrival (manual pilot) ---
+    move_velocity:         2.0   # m/s, assumed pilot cruise speed, only used to size timeouts
+    max_steps:            50     # waypoints before the mission aborts
+    waypoint_timeout_sec: 30.0   # s to reach one waypoint
+    arrival_position_tolerance: 1.0    # m, XY arrival radius
+    arrival_altitude_tolerance: 0.5    # m, Z arrival band
+    arrival_yaw_tolerance_deg: 20.0    # deg; 180 disables the yaw check
+    arrival_hold_time_sec:      1.0    # s the drone must stay inside tolerance
+    takeoff_timeout_sec:      120.0    # s for the pilot to reach flight_altitude
+
+    # --- Debug ---
+    debug_planner: true          # publish RViz markers and verbose logs
+
+visual_servoing_node:
+  ros__parameters:
+    # --- Geometry ---
+    min_altitude:       2.0   # m, lower bound on the servoing descent
+    max_altitude:      10.0   # m, upper bound on the servoing climb
+    standoff_distance:  2.5   # m to hold from the target
+    x_dist:             3.0   # m, forward offset of the first approach pose
+
+    # --- Movement & arrival (manual pilot) ---
+    min_valid_depth:  0.5   # m, depth readings below this are discarded
+    max_valid_depth: 10.0   # m, depth readings above this are discarded
+    arrival_position_tolerance: 1.0    # m, XY arrival radius
+    arrival_altitude_tolerance: 0.5    # m, Z arrival band
+    arrival_yaw_tolerance_deg: 20.0    # deg; 180 disables the yaw check
+    arrival_hold_time_sec:      1.0    # s the drone must stay inside tolerance
+    viewpoint_timeout_sec:      0.0    # s; 0 = hold until reached (see /abort_servoing)
+
+    # --- Image/pose sync ---
+    vlm_frame_delay_tolerance: 1.0     # s; older frames are refused before the VLM runs
+    rgb_depth_sync_tolerance:  0.1     # s, max RGB/depth stamp gap (depth is sampled at an RGB bbox)
+
+# Not launched by exploration_mission.launch.py; started with
+# `ros2 run exploration_v2 mission_manager_node`. Node name is `mission_manager`.
+mission_manager:
+  ros__parameters:
+    # --- Frames & topics ---
+    start_mission_action: "/start_mission"   # action name served by planner_node
+    clues_file: ""                           # path to vlm_clues.json; "" = package share config/
+
+    # --- Grid ---
+    map_name: "real_world"   # label written into the mission report
+    grid_x_min: -10.0        # m, East; sent in the /start_mission goal
+    grid_x_max:  10.0        # m, East
+    grid_y_min:  -5.0        # m, North
+    grid_y_max:  15.0        # m, North
+
+    # --- Movement & arrival ---
+    wait_for_server_sec: 30.0   # s to wait for /start_mission
+
+    # --- Debug ---
+    report_dir: "mission_reports"   # output directory for reports and trajectory logs
+    shutdown_on_completion: true    # exit once every clue has been run
+    save_logs: true                 # write trajectory logs alongside the report

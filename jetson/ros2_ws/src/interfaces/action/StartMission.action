@@ -1,0 +1,24 @@
+string primary_object
+string object_description
+string full_instruction
+string surroundings_json
+string sigmas_json
+string d_stars_json
+string map_name
+float64 grid_x_min
+float64 grid_x_max
+float64 grid_y_min
+float64 grid_y_max
+---
+bool success
+bool target_found
+bool is_collision
+int32 steps
+float32 distance_travelled
+float32 vlm_inference_time
+string message
+---
+int32 iteration
+geometry_msgs/Point position
+float32 distance_travelled
+bool is_collision

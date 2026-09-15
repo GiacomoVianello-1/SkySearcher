@@ -1,0 +1,5 @@
+string instruction
+int32 k
+---
+string[] categories
+bool success

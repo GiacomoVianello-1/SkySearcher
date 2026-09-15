@@ -1,0 +1,8 @@
+string target_object
+sensor_msgs/Image[] images
+---
+bool parse_success
+int32[] ranked_angles
+string rationale
+float32 inference_ms
+float32 suggested_distance

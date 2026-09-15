@@ -1,0 +1,65 @@
+name: oquyla_mission
+attach: true
+startup_window: control
+root: /root/ros2_ws
+# REGIME: full object-search stack with a manual pilot. MAVROS gives RTK pose
+# over TELEM2, the camera plus the static extrinsic complete the TF tree, and
+# the five exploration_v2 nodes run the search. The planner never commands the
+# aircraft — it publishes a viewpoint on /commanded_viewpoint and waits for the
+# pilot to fly there. Drive the mission from the `control` window.
+pre_window: source /opt/ros/humble/setup.bash && source install/setup.bash
+
+windows:
+  # MAVROS is here rather than in exploration_mission.launch.py so restarting
+  # the stack does not drop the FCU link. camera_tf joins the MAVROS chain
+  # (map -> base_link) to the RealSense chain; without it the TF tree is two
+  # islands and every world -> camera lookup fails.
+  - drivers:
+      layout: even-horizontal
+      panes:
+        - ros2 launch mavros px4.launch fcu_url:=/dev/ttyTHS1:921600 gcs_url:=udp://:14555@192.168.1.150:14550
+        - sleep 2 && ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true
+        - sleep 3 && ros2 launch exploration_v2 camera_tf.launch.py
+
+  # vlm loads Qwen (~1-2 min) and everything downstream blocks on it.
+  #
+  # -r __node:= is required, not decoration: vlm_node, semantic_belief_tracker_node
+  # and planner_node register as qwen_vlm_node, semantic_map_node and
+  # exploration_planner_node. exploration_mission.launch.py renames them with
+  # name=, so the YAML sections match there. Under ros2 run there is no rename,
+  # and a node whose name does not match its section silently gets only /**.
+  - perception:
+      layout: even-horizontal
+      panes:
+        - sleep 4 && ros2 run exploration_v2 vlm_node --ros-args -r __node:=vlm_node --params-file ./install/exploration_v2/share/exploration_v2/config/exploration_params.yaml
+        - sleep 4 && ros2 run exploration_v2 coverage_map_node --ros-args -r __node:=coverage_map_node --params-file ./install/exploration_v2/share/exploration_v2/config/exploration_params.yaml
+        - sleep 4 && ros2 run exploration_v2 semantic_belief_tracker_node --ros-args -r __node:=semantic_belief_tracker_node --params-file ./install/exploration_v2/share/exploration_v2/config/exploration_params.yaml
+
+  - mission:
+      layout: even-horizontal
+      panes:
+        - sleep 6 && ros2 run exploration_v2 planner_node --ros-args -r __node:=planner_node --params-file ./install/exploration_v2/share/exploration_v2/config/exploration_params.yaml
+        - sleep 6 && ros2 run exploration_v2 visual_servoing_node --ros-args -r __node:=visual_servoing_node --params-file ./install/exploration_v2/share/exploration_v2/config/exploration_params.yaml
+
+  # `bagrec [name]` is pre-loaded in this pane; just run it.
+  - bag:
+      panes:
+        - |
+          REC_TOPICS="/tf /tf_static /mavros/local_position/odom /mavros/global_position/raw/fix /camera/camera/color/image_raw/compressed /camera/camera/aligned_depth_to_color/image_raw/compressedDepth /camera/camera/color/camera_info /commanded_viewpoint /pilot_guidance /posterior_grid /coverage_grid /detection_positions /target_detected /annotated_img"
+          bagrec() { ros2 bag record -o "/root/bags/${1:-flight}" $REC_TOPICS; }
+          echo "record : bagrec [name]   -> /root/bags/<name|flight>  (Ctrl-c to stop)"
+
+  # tf.send resets on every MAVROS restart and must be set by hand. Off, the
+  # odom topic publishes while TF stays empty and every arrival wait returns
+  # NO_POSE. The origin check matters too: map is PX4's EKF2 origin, which is
+  # wherever the FCU last booted with GPS, so power-cycle it on site.
+  - control:
+      panes:
+        - |
+          echo "tf.send : ros2 param set /mavros/local_position tf.send true"
+          echo "tf check: ros2 run tf2_ros tf2_echo map camera_color_optical_frame"
+          echo "rtk     : ros2 topic echo /mavros/gpsstatus/gps1/raw --field fix_type   # 6 = RTK fixed"
+          echo "origin  : ros2 run tf2_ros tf2_echo map base_link    # ~0,0,0 at the start point"
+          echo "reset   : ros2 service call /reset_coverage std_srvs/srv/Trigger"
+          echo "stop    : ros2 service call /stop_mission   std_srvs/srv/Trigger"
+          echo "abort   : ros2 service call /abort_servoing std_srvs/srv/Trigger"

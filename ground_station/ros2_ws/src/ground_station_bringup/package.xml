@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>ground_station_bringup</name>
+  <version>0.1.0</version>
+  <description>Ground station bringup package for OptiTrack MoCap and RViz2</description>
+  <maintainer email="giacomo@todo.com">Giacomo</maintainer>
+  <license>BSD</license>
+
+  <exec_depend>vrpn_mocap</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+  <exec_depend>python3-rclpy</exec_depend>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

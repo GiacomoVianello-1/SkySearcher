@@ -1,0 +1,9 @@
+# REQUEST
+sensor_msgs/Image image
+string target_object
+---
+# RESPONSE
+string caption
+int32[] bbox_2d        # [xmin, ymin, xmax, ymax], empty if it fails
+bool parse_success
+float32 inference_ms

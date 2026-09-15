@@ -1,0 +1,7 @@
+# Request
+sensor_msgs/Image image
+string target_query      # Eg: "lake, building, fountain, car, park path"
+---
+# Response
+bool success
+SemanticBBox[] detections

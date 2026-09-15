@@ -1,0 +1,13 @@
+# Parameters for the VRPN TF broadcaster (scripts/tf_broadcaster.py).
+# Indoor mocap only. Outdoors the pose comes from RTK via MAVROS on the Jetson,
+# and this node is not started (use_mocap:=false, the default).
+# The camera extrinsic is published by the Jetson, see
+# jetson/ros2_ws/src/exploration_v2/config/exploration_params.yaml.
+/**:
+  ros__parameters:
+    # Regex matched against topic names to discover mocap pose topics.
+    # Capture group 1 is used as the child frame of the published transform.
+    pose_topic_pattern: '^/vrpn_mocap/(.+)/pose$'
+
+    # Period (s) between scans for new mocap pose topics.
+    discovery_period: 2.0

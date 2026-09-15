@@ -1,0 +1,6 @@
+# TODO: implement a strategy to select this service or ExtractConcepts
+string instruction
+---
+string primary_object
+string[] surroundings
+bool success

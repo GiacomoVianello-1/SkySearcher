@@ -1,0 +1,10 @@
+# Request
+float64 current_x
+float64 current_y
+float64 current_yaw
+float64 frontier_spacing
+float64 standoff_dist
+---
+bool success
+string message
+geometry_msgs/Pose2D[] candidates

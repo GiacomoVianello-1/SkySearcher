@@ -1,0 +1,56 @@
+services:
+  robotics_ia:
+    image: robotics_ia:jetson
+    runtime: nvidia
+    network_mode: "host"
+    stdin_open: true
+    tty: true
+    privileged: true
+    shm_size: 8g
+    command: tail -f /dev/null
+    environment:
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
+      - PULSE_SERVER=unix:/run/user/1000/pulse/native
+      - HF_TOKEN=${HF_TOKEN:-}
+      # 1 = never contact the Hub, load Qwen straight from the mounted cache.
+      # Set it in the field, where a DNS timeout on every vlm_node start is the
+      # only thing the network lookup buys you:  HF_OFFLINE=1 docker compose up -d
+      - HF_HUB_OFFLINE=${HF_OFFLINE:-0}
+      - DISPLAY=${DISPLAY:-:0}
+      - XAUTHORITY=/root/.Xauthority
+      - ROS_DOMAIN_ID=2                       # Has to match the one used on the robot
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp # Has to match the one used on the robot
+      # THIS IS VITAL, OTHERWISE DDS WON'T BE ABLE TO COMMUNICATE WITH OTHER NODES ON THE NETWORK
+      - CYCLONEDDS_URI=file:///etc/cyclonedds/cyclone_config.xml
+    volumes:
+      - /tmp/argus_socket:/tmp/argus_socket
+      - /etc/enctune.conf:/etc/enctune.conf
+      - /etc/nv_tegra_release:/etc/nv_tegra_release
+      - /var/run/dbus:/var/run/dbus
+      - /var/run/avahi-daemon/socket:/var/run/avahi-daemon/socket
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/jetson/jetson-containers/data:/data
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - /run/user/1000/pulse:/run/user/1000/pulse
+      - /run/jtop.sock:/run/jtop.sock
+      - /dev:/dev
+      - ./ros2_ws:/root/ros2_ws
+      - ./bags:/root/bags   # rosbags survive the container; see the bag window
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /home/jetson/.Xauthority:/root/.Xauthority
+      - /home/jetson/.huggingface:/root/.huggingface
+      - /home/jetson/.cache/huggingface:/root/.cache/huggingface
+      - ./cyclone_config.xml:/etc/cyclonedds/cyclone_config.xml:ro # FUNDAMENTAL
+    devices:
+      - /dev/snd
+      - /dev/bus/usb
+      - /dev/i2c-0
+      - /dev/i2c-1
+      - /dev/i2c-2
+      - /dev/i2c-4
+      - /dev/i2c-5
+      - /dev/i2c-7
+      - /dev/i2c-9
+      - /dev/ttyAMA0:/dev/ttyAMA0
+      - /dev/ttyTHS1:/dev/ttyTHS1

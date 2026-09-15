@@ -1,0 +1,30 @@
+services:
+  robotics_ia_ground_station:
+    image: robotics_ia:ground_station
+    environment:
+      - QT_X11_NO_MITSHM=1
+      - DISPLAY=${DISPLAY:-:0}
+      - XAUTHORITY=/root/.Xauthority
+      - ROS_DOMAIN_ID=2                       # Has to match the one used on the robot
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp # Has to match the one used on the robot
+      # THIS IS VITAL, OTHERWISE DDS WON'T BE ABLE TO COMMUNICATE WITH OTHER NODES ON THE NETWORK.
+      - CYCLONEDDS_URI=file:///etc/cyclonedds/cyclone_config.xml
+    volumes:
+      - /var/run/dbus:/var/run/dbus
+      - /var/run/avahi-daemon/socket:/var/run/avahi-daemon/socket
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - /run/user/1000/pulse:/run/user/1000/pulse
+      - /dev:/dev
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ./cyclone_config.xml:/etc/cyclonedds/cyclone_config.xml:ro # FUNDAMENTAL
+      - ./ros2_ws:/root/ros2_ws
+      - ./visualizer:/root/visualizer
+    # We use the host network to have access to everything.
+    network_mode: "host"
+
+    # Keep the container running. Exec in with bash, then start RViz with
+    # "tmuxinator start -p /root/ros2_ws/tmuxinator/launch_ground_station.yaml".
+    command: tail -f /dev/null
+    

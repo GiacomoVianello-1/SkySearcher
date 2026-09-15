@@ -1,0 +1,129 @@
+#---
+# name: robotics_ia
+# group: robotics
+# requires: '>=36'
+# test: test.py
+#---
+  
+FROM dustynv/l4t-pytorch:r36.4.0
+# NOTE: l4t includes a  jetson specific pip index for optimized packages.
+# Some packages (like Pillow, bitsandbytes) are installed from the default PyPI index but
+# it has to be added explicitely: --index-url https://pypi.org/simple
+
+SHELL ["/bin/bash", "-c"]
+
+# ROS2 Humble
+RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+      -o /usr/share/keyrings/ros-archive-keyring.gpg \
+    && echo "deb [arch=arm64 signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] \
+      http://packages.ros.org/ros2/ubuntu jammy main" \
+      > /etc/apt/sources.list.d/ros2.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
+      ros-humble-desktop \
+      python3-colcon-common-extensions \
+      python3-rosdep \
+    && rosdep init && rosdep update \
+    && echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc \
+    && rm -rf /var/lib/apt/lists/*
+    
+# RealSense - dependencies 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    libssl-dev \
+    libusb-1.0-0-dev \
+    libudev-dev \
+    pkg-config \
+    libgtk-3-dev \
+    cmake \
+    && rm -rf /var/lib/apt/lists/*
+
+# RealSense — build librealsense from source (with FORCE_LIBUVC for ARM/Jetson)
+RUN git clone https://github.com/realsenseai/librealsense.git /tmp/librealsense && \
+    cd /tmp/librealsense && \
+    mkdir build && cd build && \
+    cmake ../ \
+      -DFORCE_LIBUVC=true \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DBUILD_WITH_CUDA=true && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig && \
+    rm -rf /tmp/librealsense
+
+# RealSense — wrapper ROS2 Humble
+RUN mkdir -p /root/realsense_ws/src && \
+    git clone https://github.com/realsenseai/realsense-ros.git /root/realsense_ws/src/realsense-ros
+
+WORKDIR /root/realsense_ws
+
+RUN apt-get update && \
+    rosdep install -i --from-path src --rosdistro humble --skip-keys=librealsense2 -y \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN source /opt/ros/humble/setup.bash && colcon build
+
+RUN echo "source /root/realsense_ws/install/setup.bash" >> /root/.bashrc
+
+# VLM dependencies + cv_bridge dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-humble-cv-bridge \
+    ros-humble-vision-opencv \
+    python3-opencv \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --index-url https://pypi.org/simple \
+    Pillow \
+    && rm -rf ~/.cache/pip
+
+RUN apt-get update && apt-get upgrade -y
+RUN apt-get install -y tmux \
+    tmuxinator \
+    xterm \
+    curl \
+    ssh \
+    tree \
+    python3-tk \
+    nano \
+    libtool \
+    libtool-bin \
+    htop \
+    gdb \
+    net-tools \
+    build-essential \
+    cmake \
+    lsb-release \
+    iputils-ping \
+    iproute2
+
+# For allowing connection between machines, fastdds has some problem.
+RUN apt-get update && apt-get install -y ros-humble-rmw-cyclonedds-cpp
+
+# For image transport plugins (compressed, etc.) on ROS2 Humble.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-humble-image-transport-plugins \
+    ros-humble-compressed-image-transport \
+    && rm -rf /var/lib/apt/lists/*
+
+# Transformers
+RUN pip install --index-url https://pypi.org/simple \
+    transformers==4.57.0 \
+    accelerate \
+    && rm -rf ~/.cache/pip
+
+# Enable scroll in tmux
+RUN printf "set -g mouse on\n\
+    bind -n M-Left select-pane -L\n\
+    bind -n M-Right select-pane -R\n\
+    bind -n M-Up select-pane -U\n\
+    bind -n M-Down select-pane -D\n\
+    \n\
+    # split panes using | and -\n\
+    bind | split-window -h\n\
+    bind - split-window -v\n\
+    unbind '\"'\n\
+    unbind %%\n" > /root/.tmux.conf
+
+COPY test.py /root/test.py
+RUN python3 /root/test.py
+
+WORKDIR /root/

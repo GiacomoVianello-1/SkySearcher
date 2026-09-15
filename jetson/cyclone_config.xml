@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CycloneDDS>
+    <Domain>
+        <General>
+            <Interfaces>
+                <!-- Pinned by name, not by address or autodetermine. The name is stable
+                     across networks, so switching subnets needs no edit here. Do not use
+                     autodetermine: on a Jetson it can pick l4tbr0, docker0 or eth0, which
+                     leaves DDS invisible while ping still works. -->
+                <NetworkInterface name="wlx5ca6e6d0d1dc"/>
+            </Interfaces>
+        </General>
+        <Discovery>
+            <Peers>
+                <!-- Ground station on each network we use. An unreachable peer is
+                     harmless, so both can be listed and neither needs editing. -->
+                <Peer address="192.168.1.150"/>
+                <Peer address="192.168.0.150"/>
+            </Peers>
+        </Discovery>
+    </Domain>
+</CycloneDDS>

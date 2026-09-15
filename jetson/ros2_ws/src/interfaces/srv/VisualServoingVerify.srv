@@ -1,0 +1,16 @@
+float64 target_x
+float64 target_y
+float64 pre_x
+float64 pre_y
+float64 pre_z
+float64 pre_yaw
+string target_query
+string object_description
+int32 max_adjust_steps
+---
+bool verified
+float64 final_x
+float64 final_y
+float64 final_z
+float64 final_yaw
+string message

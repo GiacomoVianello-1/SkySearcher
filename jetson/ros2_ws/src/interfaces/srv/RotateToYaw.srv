@@ -1,0 +1,9 @@
+# Request
+float64 yaw                 # Desired angle (in NED)
+float64 timeout_sec         # Use 0.0 to disable timeout
+float64 margin              # Acceptable error margin in degs (suggested 5.0)
+bool wait_on_last_task      # Modality: sync/async
+---
+# Response
+bool success
+float64 yaw      # CCW degrees (ROS convention)

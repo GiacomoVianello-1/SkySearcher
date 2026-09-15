@@ -1,0 +1,26 @@
+# Service to fetch the next dataset episode for automated evaluation
+
+string dataset_filter       # Filter by dataset name (e.g. "dataset_CabinLake"), or empty for all
+bool reset_index           # Reset dataset iterator to beginning
+string start_episode_id     # Optional episode_id to start/resume from (e.g. "3" or "")
+---
+bool has_more              # True if an episode is available, False if completed
+string dataset_name         # e.g., "dataset_CabinLake"
+string map_name             # e.g., "CabinLake_test" or "CabinLake"
+string episode_id           # e.g., "2"
+string true_name            # e.g., "Boat"
+string object_name          # e.g., "SM_Boat_01a_130"
+
+geometry_msgs/Point start_position
+geometry_msgs/Quaternion start_quaternion
+geometry_msgs/Point target_position
+
+string primary_object       # VLM primary object name
+string object_description   # Visual/physical description of the target object
+string full_instruction     # Full instruction describing target and surroundings context
+string surroundings_json    # JSON array string e.g. '["white sand", "wooden oars"]'
+string sigmas_json          # JSON array string e.g. '[25.0, 3.0]'
+string d_stars_json         # JSON array string e.g. '[0.0, 1.5]'
+
+string dataset_dir          # Absolute path to the dataset folder
+string raw_episode_json     # Full JSON string of episode object from dataset

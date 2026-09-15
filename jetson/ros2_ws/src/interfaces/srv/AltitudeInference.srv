@@ -1,0 +1,5 @@
+string target_query
+---
+string object_size
+string scene_scale
+float64 suggested_altitude

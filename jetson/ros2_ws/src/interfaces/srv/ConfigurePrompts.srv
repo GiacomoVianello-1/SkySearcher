@@ -1,0 +1,7 @@
+string primary_object
+string[] surroundings
+float64[] sigmas
+string instruction
+---
+bool success
+string message

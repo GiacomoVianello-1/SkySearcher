@@ -1,0 +1,95 @@
+FROM ubuntu:22.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+# ---- Base tooling --------------------------------------------------------
+RUN apt-get update && apt-get upgrade -y \
+  && apt-get install -y --no-install-recommends \
+    ca-certificates curl git gnupg lsb-release zstd libssl-dev \
+    tmux tmuxinator vim xterm ssh tree nano htop gdb \
+    net-tools iputils-ping iproute2 libtool libtool-bin cmake build-essential \
+    python3-tk python3-setuptools python3-pip python3-venv \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN echo "set -g mouse on" > /root/.tmux.conf
+
+# ---- ROS 2 Humble ---------------------------------------------------------
+RUN apt-get update && apt-get install -y --no-install-recommends locales \
+  && locale-gen en_US en_US.UTF-8 \
+  && update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
+ENV LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      software-properties-common \
+  && add-apt-repository universe \
+  && curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+       -o /usr/share/keyrings/ros-archive-keyring.gpg \
+  && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) main" \
+       > /etc/apt/sources.list.d/ros2.list \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ros-humble-desktop \
+      ros-humble-rmw-cyclonedds-cpp \
+      ros-dev-tools \
+      python3-rosdep \
+      python3-colcon-common-extensions \
+  && rosdep init \
+  && rm -rf /var/lib/apt/lists/*
+
+# ---- Python deps ----------------------------------------------------------
+RUN pip3 install --no-cache-dir \
+    --index-url https://pypi.org/simple \
+    "transformers==4.57.0" \
+    "numpy==1.25.1" \
+    "qwen-vl-utils" \
+    "Pillow" \
+    "accelerate" \
+    "shapely"
+
+# PyTorch
+RUN pip3 install --no-cache-dir \
+    torch torchvision \
+    --index-url https://download.pytorch.org/whl/cu132
+
+# ---- Vision / OpenCV ------------------------------------------------------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-humble-cv-bridge \
+    ros-humble-vision-opencv \
+    ros-humble-compressed-image-transport \
+    python3-opencv \
+  && rm -rf /var/lib/apt/lists/*
+
+# ---- MavLink --------------------------------------------------------------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-humble-mavros \
+    ros-humble-mavros-extras \
+    wget \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN wget https://raw.githubusercontent.com/mavlink/mavros/master/mavros/scripts/install_geographiclib_datasets.sh \
+    && chmod +x install_geographiclib_datasets.sh \
+    && ./install_geographiclib_datasets.sh \
+    && rm install_geographiclib_datasets.sh
+
+# ---- Aerostack2 -----------------------------------------------------------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-humble-aerostack2 \
+  && rm -rf /var/lib/apt/lists/*
+
+# ---- VRPN MoCap (OptiTrack / VICON) --------------------------------------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    netbase \
+    ros-humble-vrpn-mocap \
+  && rm -rf /var/lib/apt/lists/*
+
+# --- ReRun Visualizer ------------------------------------------------------
+RUN pip3 install --no-cache-dir \
+    rerun-sdk \
+    rosbags \
+  && rm -rf /var/lib/apt/lists/*
+
+# ---- Source ROS on every shell --------------------------------------------
+RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
+
+WORKDIR /root/

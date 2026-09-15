@@ -1,0 +1,16 @@
+# Request
+geometry_msgs/Pose2D[] candidates
+float64 current_x
+float64 current_y
+float64 gamma
+float64 w_semantic
+float64 w_reobs
+---
+bool success
+string message
+int32 best_index
+geometry_msgs/Pose2D best_waypoint
+float64[] scores
+float64[] ig_geometric
+float64[] ig_semantic
+float64[] ig_reobservation
