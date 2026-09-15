@@ -1,6 +1,6 @@
 <div align="center">
 
-# SkySearcher: High-Altitude Onboard Vision-Language Reasoning for Aerial Query Localization
+# SkySearcher:  High-Altitude Onboard VLM Reasoning for Aerial Semantic Search
 
 <p><strong>Code coming soon.</strong></p>
 
